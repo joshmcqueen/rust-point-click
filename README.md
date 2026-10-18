@@ -43,11 +43,11 @@ The shader follows Macroquad's material API: https://docs.rs/macroquad/0.4.16/ma
 
 On the available Apple Silicon Mac: `cargo fmt --check`, `cargo test` (4 passed), `cargo clippy -- -D warnings` and `cargo build` passed. Apple Command Line Tools are installed. Rust 1.99.1, Macroquad 0.4.16.
 
-**User desktop check passed on macOS (October 18, 2026).** The user opened the app and confirmed the room renders successfully, the movable light works, and the character visibly responds to the torch while walking past it. Live resizing, letterboxing and the L comparison toggle still need an explicit manual check; coordinate mapping is covered by automated tests.
+**User desktop check passed on macOS (October 18, 2026).** The user opened the app and confirmed the room renders successfully, the movable light works, and the character visibly responds to the torch while walking past it. The user also confirmed live resizing looks good. The L comparison toggle and ignoring clicks in letterbox bars still need explicit manual checks; coordinate mapping is covered by automated tests.
 
 Earlier agent launch attempts aborted during Miniquad's macOS initialization or timed out. The user reported having recently reinstalled macOS and needing to grant OS permissions, which may explain those failures; the cause was not independently established. Their successful desktop launch resolves the initial rendering blocker.
 
-Windows and Linux are intended targets through Macroquad, but neither was built or run here. Use a native Rust toolchain and any platform development libraries required by Macroquad. The `.app` helper is macOS-only and currently builds for this Mac's architecture; it is not a signed or universal distribution.
+The user built and ran the project on Windows (October 18, 2026). Their screenshot revealed hard circular cutoffs around both lights. A shader fix now normalizes light offsets before calculating length and requests high precision; this avoids large squared pixel distances that can overflow reduced-precision arithmetic. The suspected driver precision issue and fix still require a Windows visual recheck. Linux has not been built or run here. Use a native Rust toolchain and any platform development libraries required by Macroquad. The `.app` helper is macOS-only and currently builds for this Mac's architecture; it is not a signed or universal distribution.
 
 To repeat developer checks with the project-local toolchain:
 
@@ -63,8 +63,37 @@ cargo build
 
 ## Next milestones
 
-1. Explicitly check live resizing, letterboxing and the lighting toggle; tune movement and lighting as needed.
+1. Explicitly check clicks in letterbox bars and the lighting toggle; run the Windows portability check below.
 2. Add a named hotspot and examine interaction.
 3. Add a small inventory and one puzzle.
 4. Connect rooms, then add conversation and save/load.
 5. Build a coherent three-screen demo before expanding content.
+
+## Build and run on Windows
+
+Use native Windows PowerShell or Windows Terminal for this portability check.
+
+1. Install Rust using https://rust-lang.org/tools/install. Accept the default stable MSVC toolchain and install the Visual Studio C++ prerequisites when prompted. If installing Build Tools manually, select **Desktop development with C++**, including the MSVC x64/x86 tools and a Windows SDK. Restart the terminal afterward.
+2. Copy `Cargo.toml`, `Cargo.lock`, and the entire `src` folder into a folder such as `Documents\rust-point-click` on the PC. README.md and TASKS.md are useful to copy too. Do not transfer `.local`, `target`, or the macOS `.app`; Windows needs its own toolchain and build. No external artwork is needed.
+3. In PowerShell, run:
+
+```powershell
+cd "$HOME\Documents\rust-point-click"
+rustc --version
+cargo --version
+cargo test --locked
+cargo run --locked
+```
+
+The first build downloads dependencies and needs an internet connection. `cargo run` builds a native Windows executable and opens the game.
+
+For an optimized executable:
+
+```powershell
+cargo build --release --locked
+.\target\release\rust-point-click.exe
+```
+
+Check walking/stopping, resizing into wide and tall shapes, ignoring clicks in black bars, warm torch lighting on the character, right-mouse movable light, L comparison, R reset, and Escape. Record build results separately from visual checks in TASKS.md. Windows build and launch are user-confirmed; patched lighting and the remaining controls/resizing checks still need verification on the PC.
+
+If Cargo is not recognized, reopen the terminal after installing Rust. If the build cannot find `link.exe`, install or repair the Visual Studio C++ tools and Windows SDK. For other failures, capture the full terminal error.

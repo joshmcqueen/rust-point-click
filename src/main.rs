@@ -22,12 +22,12 @@ attribute vec2 texcoord;
 attribute vec4 color0;
 uniform mat4 Model;
 uniform mat4 Projection;
-varying lowp vec2 uv;
+varying highp vec2 uv;
 void main() { gl_Position = Projection * Model * vec4(position, 1.0); uv = texcoord; }
 "#;
 const FRAGMENT: &str = r#"#version 100
-precision mediump float;
-varying lowp vec2 uv;
+precision highp float;
+varying highp vec2 uv;
 uniform sampler2D Texture;
 uniform vec2 Torch;
 uniform vec2 Lantern;
@@ -35,8 +35,10 @@ uniform float Flicker;
 uniform float Inspect;
 void main() {
     vec2 p = vec2(uv.x, 1.0 - uv.y) * vec2(1920.0, 1080.0);
-    float a = max(0.0, 1.0 - distance(p, Torch) / 760.0);
-    float b = max(0.0, 1.0 - distance(p, Lantern) / 540.0);
+    // Normalize BEFORE length: squaring pixel distances can overflow reduced
+    // precision on some drivers, cutting both lights off at a hard circle.
+    float a = max(0.0, 1.0 - length((p - Torch) / 760.0));
+    float b = max(0.0, 1.0 - length((p - Lantern) / 540.0));
     vec3 light = vec3(0.18, 0.22, 0.31)
         + vec3(1.15, 0.72, 0.32) * a * a * Flicker
         + vec3(0.65, 0.76, 0.86) * b * b;

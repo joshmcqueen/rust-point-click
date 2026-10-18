@@ -10,7 +10,10 @@
 - [x] Build local unsigned macOS app and repeatable app packaging helper.
 - [x] Attempt runtime validation via command launch and native app launch.
 - [x] User desktop check: app opens, room renders, movable light works, and character responds to torch while walking (October 18, 2026).
-- [ ] Explicit manual checks: live resizing/letterboxing and L lighting-comparison toggle.
-- [ ] Early portability check on Windows; Linux remains untested.
+- [x] User desktop check: live resizing looks good (October 18, 2026).
+- [ ] Explicit manual checks: L lighting-comparison toggle and clicks in letterbox bars are ignored.
+- [x] User Windows check: project builds, launches, and renders; screenshot shows hard circular lighting cutoffs (October 18, 2026).
+- [x] Apply shader precision fix: normalize light offsets before length and use high-precision coordinates/arithmetic.
+- [ ] Recheck patched lighting on Windows against the smooth macOS gradient; complete remaining Windows controls/resizing checks. Linux remains untested.
 
 Scope: one room, unobstructed movement, procedural temporary art. No inventory, dialogue, puzzle, collision/pathfinding, normal maps or dynamic occlusion shadows.
