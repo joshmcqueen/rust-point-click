@@ -47,7 +47,7 @@ On the available Apple Silicon Mac: `cargo fmt --check`, `cargo test` (4 passed)
 
 Earlier agent launch attempts aborted during Miniquad's macOS initialization or timed out. The user reported having recently reinstalled macOS and needing to grant OS permissions, which may explain those failures; the cause was not independently established. Their successful desktop launch resolves the initial rendering blocker.
 
-The user built and ran the project on Windows (October 18, 2026). Their screenshot revealed hard circular cutoffs around both lights. A shader fix now normalizes light offsets before calculating length and requests high precision; this avoids large squared pixel distances that can overflow reduced-precision arithmetic. The suspected driver precision issue and fix still require a Windows visual recheck. Linux has not been built or run here. Use a native Rust toolchain and any platform development libraries required by Macroquad. The `.app` helper is macOS-only and currently builds for this Mac's architecture; it is not a signed or universal distribution.
+The user built and ran the project on Windows (October 18, 2026). Their screenshot revealed hard circular cutoffs around both lights. A shader fix now normalizes light offsets before calculating length and requests high precision; this avoids large squared pixel distances that can overflow reduced-precision arithmetic. The user confirmed the patched torch and movable light gradients are smooth and visually match macOS (October 18, 2026). The user also confirmed resizing works on Windows and Linux (October 18, 2026); other Linux behavior has not yet been explicitly verified. Use a native Rust toolchain and any platform development libraries required by Macroquad. The `.app` helper is macOS-only and currently builds for this Mac's architecture; it is not a signed or universal distribution.
 
 To repeat developer checks with the project-local toolchain:
 
@@ -94,6 +94,6 @@ cargo build --release --locked
 .\target\release\rust-point-click.exe
 ```
 
-Check walking/stopping, resizing into wide and tall shapes, ignoring clicks in black bars, warm torch lighting on the character, right-mouse movable light, L comparison, R reset, and Escape. Record build results separately from visual checks in TASKS.md. Windows build and launch are user-confirmed; patched lighting and the remaining controls/resizing checks still need verification on the PC.
+Check walking/stopping, resizing into wide and tall shapes, ignoring clicks in black bars, warm torch lighting on the character, right-mouse movable light, L comparison, R reset, and Escape. Record build results separately from visual checks in TASKS.md. Windows build, launch, patched lighting, and resizing are user-confirmed. Linux resizing is also user-confirmed. Remaining Windows controls and Linux behavior beyond resizing still need explicit checks.
 
 If Cargo is not recognized, reopen the terminal after installing Rust. If the build cannot find `link.exe`, install or repair the Visual Studio C++ tools and Windows SDK. For other failures, capture the full terminal error.

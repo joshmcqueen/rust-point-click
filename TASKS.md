@@ -14,6 +14,8 @@
 - [ ] Explicit manual checks: L lighting-comparison toggle and clicks in letterbox bars are ignored.
 - [x] User Windows check: project builds, launches, and renders; screenshot shows hard circular lighting cutoffs (October 18, 2026).
 - [x] Apply shader precision fix: normalize light offsets before length and use high-precision coordinates/arithmetic.
-- [ ] Recheck patched lighting on Windows against the smooth macOS gradient; complete remaining Windows controls/resizing checks. Linux remains untested.
+- [x] User Windows visual recheck: patched torch and movable light gradients are smooth and match macOS (October 18, 2026).
+- [x] User desktop check: resizing works on Windows and Linux (October 18, 2026).
+- [ ] Complete remaining Windows control checks and Linux checks beyond resizing.
 
 Scope: one room, unobstructed movement, procedural temporary art. No inventory, dialogue, puzzle, collision/pathfinding, normal maps or dynamic occlusion shadows.
