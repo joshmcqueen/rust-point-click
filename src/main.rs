@@ -1,3 +1,5 @@
+mod interaction;
+mod interface;
 mod scene;
 mod world;
 
@@ -69,6 +71,11 @@ async fn main() {
     let mut actor = Character::new(Point::new(960.0, 810.0));
     let mut lantern = vec2(1260.0, 720.0);
     let mut inspect = false;
+    let mut ui = interface::Interface::new();
+    let mut room = interaction::Room::default();
+    let mut feedback = String::new();
+    let mut feedback_until = 0.0;
+    let mut pending: Option<(String, Option<String>, String)> = None;
     loop {
         if is_key_pressed(KeyCode::Escape) {
             break;
@@ -82,15 +89,41 @@ async fn main() {
         let view = world::viewport(screen_width(), screen_height());
         let (mx, my) = mouse_position();
         let pointer = view.screen_to_scene(Point::new(mx, my));
+        // Reserve the bottom quarter for the interface. Map room input through
+        // the same vertical scale used when compositing the room texture.
+        let room_pointer = pointer
+            .filter(|p| p.y < 810.0)
+            .map(|p| Point::new(p.x, p.y / 0.75));
         if let Some(p) = pointer {
-            if is_mouse_button_pressed(MouseButton::Left) {
-                actor.walk_to(p);
+            if p.y >= 810.0 {
+                ui.scroll(mouse_wheel().1);
+                if is_mouse_button_pressed(MouseButton::Left) {
+                    ui.click(p);
+                }
+            } else if is_mouse_button_pressed(MouseButton::Left) {
+                let rp = room_pointer.unwrap();
+                if let Some(name) = interaction::hotspot(rp) {
+                    let item = ui.selected.map(|i| ui.items[i].to_string());
+                    pending = Some((ui.verb.to_string(), item, name.to_string()));
+                    actor.walk_to(Point::new(rp.x, 700.0));
+                } else {
+                    pending = None;
+                    actor.walk_to(rp);
+                }
             }
+        }
+        if let Some(p) = room_pointer {
             if is_mouse_button_down(MouseButton::Right) {
                 lantern = vec2(p.x, p.y);
             }
         }
         actor.update(get_frame_time());
+        if !actor.moving() {
+            if let Some((verb, item, object)) = pending.take() {
+                feedback = room.act(&verb, item.as_deref(), &object);
+                feedback_until = get_time() + 5.0;
+            }
+        }
         let time = get_time() as f32;
         set_camera(&Camera2D {
             render_target: Some(target.clone()),
@@ -98,6 +131,38 @@ async fn main() {
         });
         clear_background(BLACK);
         scene::draw_room(time);
+        if room.gate_open {
+            draw_rectangle(
+                814.0,
+                290.0,
+                292.0,
+                346.0,
+                Color::from_rgba(12, 20, 28, 255),
+            );
+            draw_rectangle(
+                820.0,
+                300.0,
+                25.0,
+                330.0,
+                Color::from_rgba(90, 105, 105, 255),
+            );
+        }
+        draw_rectangle(
+            1250.0,
+            365.0,
+            200.0,
+            125.0,
+            Color::from_rgba(112, 125, 120, 255),
+        );
+        for row in 0..4 {
+            draw_rectangle(
+                1270.0,
+                385.0 + row as f32 * 24.0,
+                150.0 - row as f32 * 12.0,
+                5.0,
+                Color::from_rgba(48, 64, 68, 255),
+            );
+        }
         if actor.moving() {
             draw_ellipse_lines(
                 actor.target.x,
@@ -137,30 +202,68 @@ async fn main() {
             view.y,
             WHITE,
             DrawTextureParams {
-                dest_size: Some(vec2(view.width, view.height)),
+                dest_size: Some(vec2(view.width, view.height * 0.75)),
                 flip_y: true,
                 ..Default::default()
             },
         );
         gl_use_default_material();
-        // HUD stays crisp and readable at each window size, outside the lighting pass.
-        let s = view.scale;
-        draw_rectangle(
-            view.x,
-            view.y,
-            view.width,
-            94.0 * s,
-            Color::new(0.025, 0.035, 0.055, 0.88),
-        );
+        // Overlay uses the full design canvas and is never darkened by lighting.
+        let mut overlay_camera = Camera2D::from_display_rect(Rect::new(
+            -view.x / view.scale,
+            -view.y / view.scale,
+            screen_width() / view.scale,
+            screen_height() / view.scale,
+        ));
+        // Screen cameras invert Y internally; use positive zoom for top-down UI.
+        // The room camera targets a texture and follows a different Y convention.
+        overlay_camera.zoom.y = -overlay_camera.zoom.y;
+        set_camera(&overlay_camera);
+        ui.draw(pointer);
         draw_text(
             "THE EMBER ARCHIVE",
-            view.x + 40.0 * s,
-            view.y + 42.0 * s,
-            32.0 * s,
+            28.0,
+            36.0,
+            28.0,
             Color::from_rgba(232, 207, 157, 255),
         );
-        draw_text("Left click: walk   |   Hold right mouse: move cool light   |   L: compare lighting   |   R: reset light   |   Esc: quit",
-            view.x+40.0*s, view.y+76.0*s, 23.0*s, Color::from_rgba(190,202,214,255));
+        draw_text(
+            "Right hold: light   L: lighting   R: reset   Esc: quit",
+            1160.0,
+            34.0,
+            22.0,
+            LIGHTGRAY,
+        );
+        if get_time() < feedback_until {
+            let width = measure_text(&feedback, None, 28, 1.0).width;
+            draw_rectangle(
+                960.0 - width / 2.0 - 18.0,
+                65.0,
+                width + 36.0,
+                48.0,
+                Color::new(0.02, 0.03, 0.05, 0.92),
+            );
+            draw_text(&feedback, 960.0 - width / 2.0, 98.0, 28.0, WHITE);
+        }
+        if let Some(p) = room_pointer {
+            if let Some(name) = interaction::hotspot(p) {
+                let phrase = ui.phrase(Some(name));
+                let width = measure_text(&phrase, None, 30, 1.0).width;
+                let x = p.x.clamp(width / 2.0 + 12.0, 1908.0 - width / 2.0);
+                let y = (p.y * 0.75 - 40.0).clamp(150.0, 775.0);
+                draw_rectangle(
+                    x - width / 2.0 - 10.0,
+                    y - 30.0,
+                    width + 20.0,
+                    42.0,
+                    Color::new(0.01, 0.02, 0.03, 0.85),
+                );
+                draw_text(&phrase, x - width / 2.0, y, 30.0, WHITE);
+                draw_line(p.x - 10.0, p.y * 0.75, p.x + 10.0, p.y * 0.75, 2.0, WHITE);
+                draw_line(p.x, p.y * 0.75 - 10.0, p.x, p.y * 0.75 + 10.0, 2.0, WHITE);
+            }
+        }
+        set_default_camera();
         next_frame().await;
     }
 }

@@ -97,3 +97,25 @@ cargo build --release --locked
 Check walking/stopping, resizing into wide and tall shapes, ignoring clicks in black bars, warm torch lighting on the character, right-mouse movable light, L comparison, R reset, and Escape. Record build results separately from visual checks in TASKS.md. Windows build, launch, patched lighting, and resizing are user-confirmed. Linux resizing is also user-confirmed. Remaining Windows controls and Linux behavior beyond resizing still need explicit checks.
 
 If Cargo is not recognized, reopen the terminal after installing Rust. If the build cannot find `link.exe`, install or repair the Visual Studio C++ tools and Windows SDK. For other failures, capture the full terminal error.
+
+## Adventure interface
+
+The bottom quarter now holds nine selectable verbs and a four-column, two-row
+inventory inspired by classic verb interfaces. Click a verb, then a room hotspot.
+Click an inventory item to select it for Use; click it again to deselect. Select
+Look at before an item to build an examine sentence. Scroll the inventory using
+the mouse wheel over the panel or the up/down buttons. Temporary starting items
+exercise scrolling; there is no pickup system yet.
+
+Hover over the archive gate, torch, or wall inscription to preview the action
+near the pointer. Clicking walks the explorer to the object before responding;
+clicking empty room cancels the pending interaction. Try Use + brass key + archive
+gate, then Open + archive gate. The gate can also be closed. Other actions give
+short feedback. Interface clicks never move the character or the cool light.
+
+`src/interface.rs` owns panel selection, inventory scrolling, hit testing and
+unlit UI drawing. `src/interaction.rs` owns hotspot detection and room responses.
+The room render occupies the top three quarters; its input uses the matching
+vertical transform. This first layout compresses the temporary room vertically
+to retain all existing scenery and floor destinations. The outer canvas remains
+1920×1080 with 16:9 letterboxing. Interface runtime checks are pending.

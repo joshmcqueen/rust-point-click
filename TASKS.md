@@ -18,4 +18,16 @@
 - [x] User desktop check: resizing works on Windows and Linux (October 18, 2026).
 - [ ] Complete remaining Windows control checks and Linux checks beyond resizing.
 
-Scope: one room, unobstructed movement, procedural temporary art. No inventory, dialogue, puzzle, collision/pathfinding, normal maps or dynamic occlusion shadows.
+Scope: one room, unobstructed movement, procedural temporary art, verb panel, demonstration inventory and a key/gate interaction. No dialogue, collision/pathfinding, normal maps or dynamic occlusion shadows.
+
+## Verb and inventory interface
+
+- [x] Add a teal nine-verb panel and a two-row inventory with arrows and mouse-wheel scrolling.
+- [x] Select verbs/items and preview action sentences over gate, torch, and inscription hotspots.
+- [x] Walk to hotspots before acting; clicking empty room cancels the pending action.
+- [x] Add a small brass-key/gate interaction and persistent open/closed state within the session.
+- [ ] User visual/play check: panel readability at 1280×720, inventory scrolling, hover sentences, and resized input mapping.
+
+Inventory starts with temporary demonstration items to exercise scrolling; collecting items and save/load are still future work.
+- [x] Interface integration: formatting, six unit tests, strict Clippy, native build, and macOS app rebuild pass. User confirmed the corrected interface looks good on macOS (October 18, 2026); detailed interaction checks remain pending.
+- [x] Fix screen-overlay Y orientation after user screenshot showed inverted interface at the top. Screen camera now compensates for Macroquad's screen/render-target Y convention; six tests, formatting, Clippy and app rebuild pass. User confirmed the orientation fix works and the interface looks good (October 18, 2026).
