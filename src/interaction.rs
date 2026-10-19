@@ -10,6 +10,68 @@ pub fn hotspot(p: Point) -> Option<&'static str> {
     }
 }
 
+/// Each object has one intentional place for the explorer to stand.
+pub fn approach_point(object: &str) -> Point {
+    match object {
+        "torch" => Point::new(480.0, 710.0),
+        "inscription" => Point::new(1350.0, 710.0),
+        _ => Point::new(960.0, 700.0),
+    }
+}
+
+pub struct PendingAction {
+    pub verb: String,
+    pub item: Option<String>,
+    pub object: &'static str,
+}
+
+impl PendingAction {
+    pub fn sentence(&self) -> String {
+        match self.item.as_deref() {
+            Some(item) if self.verb == "Give" => format!("Give {item} to {}", self.object),
+            Some(item) if self.verb == "Use" => format!("Use {item} with {}", self.object),
+            _ => format!("{} {}", self.verb, self.object),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct Interaction {
+    pub pending: Option<PendingAction>,
+}
+
+impl Interaction {
+    pub fn start(
+        &mut self,
+        actor: &mut crate::world::Character,
+        verb: &str,
+        item: Option<&str>,
+        object: &'static str,
+    ) {
+        actor.walk_to(approach_point(object));
+        // Snapshot selection: later UI changes cannot alter an action in flight.
+        self.pending = Some(PendingAction {
+            verb: verb.into(),
+            item: item.map(str::to_owned),
+            object,
+        });
+    }
+
+    pub fn walk(&mut self, actor: &mut crate::world::Character, point: Point) {
+        self.pending = None;
+        actor.walk_to(point);
+    }
+
+    pub fn finish(&mut self, actor: &crate::world::Character, room: &mut Room) -> Option<String> {
+        let action = self.pending.as_ref()?;
+        if actor.moving() || actor.position != approach_point(action.object) {
+            return None;
+        }
+        let action = self.pending.take()?;
+        Some(room.act(&action.verb, action.item.as_deref(), action.object))
+    }
+}
+
 #[derive(Default)]
 pub struct Room {
     pub gate_open: bool,
@@ -61,5 +123,57 @@ mod tests {
         assert!(room.gate_open);
         room.act("Close", None, "archive gate");
         assert!(!room.gate_open && room.unlocked);
+    }
+}
+
+#[cfg(test)]
+mod walking_tests {
+    use super::*;
+    use crate::world::Character;
+
+    #[test]
+    fn action_waits_for_arrival_and_runs_once() {
+        let mut actor = Character::new(Point::new(200.0, 900.0));
+        let mut room = Room::default();
+        let mut interaction = Interaction::default();
+        interaction.start(&mut actor, "Use", Some("brass key"), "archive gate");
+        assert_eq!(actor.target, approach_point("archive gate"));
+        actor.update(0.1);
+        assert!(interaction.finish(&actor, &mut room).is_none());
+        assert!(!room.unlocked);
+        actor.update(10.0);
+        assert!(interaction.finish(&actor, &mut room).is_some());
+        assert!(room.unlocked);
+        assert!(interaction.finish(&actor, &mut room).is_none());
+    }
+
+    #[test]
+    fn new_action_replaces_old_and_empty_walk_cancels() {
+        let mut actor = Character::new(Point::new(200.0, 900.0));
+        let mut room = Room::default();
+        let mut interaction = Interaction::default();
+        interaction.start(&mut actor, "Use", Some("brass key"), "archive gate");
+        interaction.start(&mut actor, "Look at", None, "torch");
+        assert_eq!(actor.target, approach_point("torch"));
+        actor.update(10.0);
+        let response = interaction.finish(&actor, &mut room).unwrap();
+        assert!(response.contains("burning"));
+        assert!(!room.unlocked);
+        interaction.start(&mut actor, "Use", Some("brass key"), "archive gate");
+        interaction.walk(&mut actor, Point::new(1500.0, 850.0));
+        actor.update(10.0);
+        assert!(interaction.finish(&actor, &mut room).is_none());
+        assert!(!room.unlocked);
+    }
+
+    #[test]
+    fn already_at_object_acts_without_extra_movement() {
+        let mut actor = Character::new(approach_point("archive gate"));
+        let mut room = Room::default();
+        let mut interaction = Interaction::default();
+        interaction.start(&mut actor, "Use", Some("brass key"), "archive gate");
+        assert!(!actor.moving());
+        assert!(interaction.finish(&actor, &mut room).is_some());
+        assert!(room.unlocked);
     }
 }

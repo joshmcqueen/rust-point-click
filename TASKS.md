@@ -31,3 +31,13 @@ Scope: one room, unobstructed movement, procedural temporary art, verb panel, de
 Inventory starts with temporary demonstration items to exercise scrolling; collecting items and save/load are still future work.
 - [x] Interface integration: formatting, six unit tests, strict Clippy, native build, and macOS app rebuild pass. User confirmed the corrected interface looks good on macOS (October 18, 2026); detailed interaction checks remain pending.
 - [x] Fix screen-overlay Y orientation after user screenshot showed inverted interface at the top. Screen camera now compensates for Macroquad's screen/render-target Y convention; six tests, formatting, Clippy and app rebuild pass. User confirmed the orientation fix works and the interface looks good (October 18, 2026).
+
+## Walk to interact
+
+- [x] Give gate, torch and inscription fixed approach points on the floor.
+- [x] Snapshot selected action and item; execute exactly once at the object's approach point.
+- [x] Show the queued action while walking; new hotspot clicks replace it and empty-room clicks cancel it.
+- [x] Cover delayed execution, replacement, cancellation, and already-at-object behavior with tests.
+- [ ] User runtime check: approach all three objects, replace/cancel actions mid-walk, and use the key then open the gate.
+
+- [x] Nine unit tests, formatting, strict Clippy and macOS app rebuild pass; user reviewed the walk-to-interact update and confirmed it looks good (October 18, 2026).

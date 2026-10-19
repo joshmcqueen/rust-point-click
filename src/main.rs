@@ -75,7 +75,7 @@ async fn main() {
     let mut room = interaction::Room::default();
     let mut feedback = String::new();
     let mut feedback_until = 0.0;
-    let mut pending: Option<(String, Option<String>, String)> = None;
+    let mut interaction = interaction::Interaction::default();
     loop {
         if is_key_pressed(KeyCode::Escape) {
             break;
@@ -103,12 +103,11 @@ async fn main() {
             } else if is_mouse_button_pressed(MouseButton::Left) {
                 let rp = room_pointer.unwrap();
                 if let Some(name) = interaction::hotspot(rp) {
-                    let item = ui.selected.map(|i| ui.items[i].to_string());
-                    pending = Some((ui.verb.to_string(), item, name.to_string()));
-                    actor.walk_to(Point::new(rp.x, 700.0));
+                    let item = ui.selected.map(|i| ui.items[i]);
+                    interaction.start(&mut actor, ui.verb, item, name);
+                    feedback_until = 0.0;
                 } else {
-                    pending = None;
-                    actor.walk_to(rp);
+                    interaction.walk(&mut actor, rp);
                 }
             }
         }
@@ -118,11 +117,9 @@ async fn main() {
             }
         }
         actor.update(get_frame_time());
-        if !actor.moving() {
-            if let Some((verb, item, object)) = pending.take() {
-                feedback = room.act(&verb, item.as_deref(), &object);
-                feedback_until = get_time() + 5.0;
-            }
+        if let Some(response) = interaction.finish(&actor, &mut room) {
+            feedback = response;
+            feedback_until = get_time() + 5.0;
         }
         let time = get_time() as f32;
         set_camera(&Camera2D {
@@ -220,6 +217,18 @@ async fn main() {
         overlay_camera.zoom.y = -overlay_camera.zoom.y;
         set_camera(&overlay_camera);
         ui.draw(pointer);
+        if let Some(action) = &interaction.pending {
+            let sentence = format!("Walking to: {}", action.sentence());
+            let width = measure_text(&sentence, None, 26, 1.0).width;
+            draw_rectangle(
+                960.0 - width / 2.0 - 14.0,
+                752.0,
+                width + 28.0,
+                46.0,
+                Color::new(0.02, 0.03, 0.05, 0.92),
+            );
+            draw_text(&sentence, 960.0 - width / 2.0, 784.0, 26.0, WHITE);
+        }
         draw_text(
             "THE EMBER ARCHIVE",
             28.0,

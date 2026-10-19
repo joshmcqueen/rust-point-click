@@ -119,3 +119,11 @@ The room render occupies the top three quarters; its input uses the matching
 vertical transform. This first layout compresses the temporary room vertically
 to retain all existing scenery and floor destinations. The outer canvas remains
 1920×1080 with 16:9 letterboxing. Interface runtime checks are pending.
+
+Walk-to-interact now uses fixed floor approach points for each object, rather than
+where within the hotspot you clicked. A "Walking to" sentence shows the queued
+action. New hotspot clicks replace it; empty-room clicks cancel it. Changing the
+verb or inventory selection while walking affects the next action, while the
+queued action keeps its original selection. Actions execute once upon arrival,
+or immediately if already at the approach point. This uses ordinary structs in
+`src/interaction.rs`; movement remains in `src/world.rs` with no pathfinding.
