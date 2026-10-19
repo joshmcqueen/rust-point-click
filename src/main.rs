@@ -1,5 +1,6 @@
 mod interaction;
 mod interface;
+mod navigation;
 mod scene;
 mod world;
 
@@ -171,11 +172,21 @@ async fn main() {
                 Color::new(0.6, 0.65, 0.65, 0.6),
             );
         }
-        scene::draw_character(
-            vec2(actor.position.x, actor.position.y),
-            actor.moving(),
-            time,
-        );
+        if actor.position.y < navigation::CHEST_FRONT {
+            scene::draw_character(
+                vec2(actor.position.x, actor.position.y),
+                actor.moving(),
+                time,
+            );
+            scene::draw_chest();
+        } else {
+            scene::draw_chest();
+            scene::draw_character(
+                vec2(actor.position.x, actor.position.y),
+                actor.moving(),
+                time,
+            );
+        }
         scene::draw_torch(time);
         draw_circle(
             lantern.x,

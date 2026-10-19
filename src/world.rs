@@ -1,4 +1,6 @@
 //! Scene coordinates and walking are independent of drawing and window size.
+use crate::navigation;
+use std::collections::VecDeque;
 
 pub const SCENE_WIDTH: f32 = 1920.0;
 pub const SCENE_HEIGHT: f32 = 1080.0;
@@ -58,7 +60,7 @@ impl Viewport {
     }
 }
 
-/// The character's position represents their feet on the unobstructed floor.
+/// The character's position represents their feet on the floor.
 pub fn clamp_walk_target(point: Point) -> Point {
     Point::new(point.x.clamp(130.0, 1790.0), point.y.clamp(650.0, 940.0))
 }
@@ -67,20 +69,23 @@ pub struct Character {
     pub position: Point,
     pub target: Point,
     pub speed: f32,
+    route: VecDeque<Point>,
 }
 
 impl Character {
     pub fn new(position: Point) -> Self {
-        let position = clamp_walk_target(position);
+        let position = navigation::safe_point(clamp_walk_target(position));
         Self {
             position,
             target: position,
             speed: 360.0,
+            route: VecDeque::new(),
         }
     }
 
     pub fn walk_to(&mut self, point: Point) {
-        self.target = clamp_walk_target(point);
+        self.target = navigation::safe_point(clamp_walk_target(point));
+        self.route = navigation::route(self.position, self.target).into();
     }
 
     pub fn moving(&self) -> bool {
@@ -88,15 +93,21 @@ impl Character {
     }
 
     pub fn update(&mut self, dt: f32) {
-        let dx = self.target.x - self.position.x;
-        let dy = self.target.y - self.position.y;
-        let distance = dx.hypot(dy);
-        let step = self.speed.max(0.0) * dt.max(0.0);
-        if distance <= step {
-            self.position = self.target;
-        } else if distance > 0.0 {
-            self.position.x += dx / distance * step;
-            self.position.y += dy / distance * step;
+        // Carry unused distance through corners so speed does not depend on frames.
+        let mut remaining = self.speed.max(0.0) * dt.max(0.0);
+        while let Some(&next) = self.route.front() {
+            let dx = next.x - self.position.x;
+            let dy = next.y - self.position.y;
+            let distance = dx.hypot(dy);
+            if distance <= remaining {
+                self.position = next;
+                self.route.pop_front();
+                remaining -= distance;
+            } else {
+                self.position.x += dx / distance * remaining;
+                self.position.y += dy / distance * remaining;
+                break;
+            }
         }
     }
 }
@@ -162,5 +173,41 @@ mod tests {
         assert!(!character.moving());
         character.update(1.0);
         assert_eq!(character.position, Point::new(130.0, 940.0));
+    }
+}
+
+#[cfg(test)]
+mod obstacle_tests {
+    use super::*;
+
+    #[test]
+    fn walking_and_retargeting_never_enter_chest() {
+        let mut actor = Character::new(Point::new(400.0, 810.0));
+        actor.walk_to(Point::new(1100.0, 810.0));
+        for frame in 0..500 {
+            if frame == 45 {
+                actor.walk_to(Point::new(750.0, 920.0));
+            }
+            actor.update(1.0 / 60.0);
+            assert!(!navigation::blocked(actor.position));
+        }
+        assert_eq!(actor.position, Point::new(750.0, 920.0));
+        assert!(!actor.moving());
+    }
+
+    #[test]
+    fn corner_travel_uses_whole_frame_budget() {
+        let mut once = Character::new(Point::new(400.0, 810.0));
+        let mut many = Character::new(once.position);
+        once.walk_to(Point::new(1100.0, 810.0));
+        many.walk_to(once.target);
+        once.update(1.5);
+        for _ in 0..90 {
+            many.update(1.0 / 60.0);
+        }
+        assert!((once.position.x - many.position.x).abs() < 0.01);
+        assert!((once.position.y - many.position.y).abs() < 0.01);
+        once.update(10.0);
+        assert_eq!(once.position, once.target);
     }
 }

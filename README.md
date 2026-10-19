@@ -30,10 +30,10 @@ The window starts at 1280×720 and can be resized. The room is drawn at **1920×
 ## Small architecture
 
 - `src/main.rs`: window, input, frame loop, render target, lighting shader and controls.
-- `src/world.rs`: scene coordinates, viewport mapping, floor bounds and movement, independent of graphics. Four unit tests cover mapping, bars, movement timing and exact stopping.
+- `src/world.rs`: scene coordinates, viewport mapping, floor bounds and movement, independent of graphics. Unit tests cover mapping, bars, movement timing, obstacle avoidance and exact stopping.
 - `src/scene.rs`: room, explorer and torch drawn with Macroquad primitives.
 
-Movement advances by speed × elapsed seconds, normalizes the travel direction and snaps precisely to the target when the remaining distance is less than a step. New clicks replace the destination. There is no collision or pathfinding.
+Movement advances by speed × elapsed seconds, normalizes the travel direction and snaps precisely to the target when the remaining distance is less than a step. New clicks replace the destination. A small corner-based route planner avoids the room's chest.
 
 Room and character first share an unlit render texture. A fragment shader multiplies their colors by cool ambient light plus two radial lights with squared falloff. The torch flickers slightly. This is actual color compositing, rather than a transparent orange circle over the scene. The architecture includes painted shadow shapes; these are static art. Light passes through architecture: no occlusion, cast shadows, normal maps or physically based lighting. The HUD is drawn after lighting for readability.
 
@@ -126,4 +126,27 @@ action. New hotspot clicks replace it; empty-room clicks cancel it. Changing the
 verb or inventory selection while walking affects the next action, while the
 queued action keeps its original selection. Actions execute once upon arrival,
 or immediately if already at the approach point. This uses ordinary structs in
-`src/interaction.rs`; movement remains in `src/world.rs` with no pathfinding.
+`src/interaction.rs`; movement remains in `src/world.rs`, with single-obstacle routing in `src/navigation.rs`.
+
+
+## Chest obstacle
+
+A wooden chest now blocks part of the floor left of the explorer's starting point.
+Click the floor on opposite sides to walk around it, or choose Look at and click
+the chest to walk to its front and examine it. The lid is rusted shut for now.
+The explorer draws behind the chest when farther up the floor and in front when
+closer to the viewer. The chest shares the room's lighting pass.
+
+`src/navigation.rs` treats the chest as a rectangle expanded for character
+clearance. It connects the start, destination and four corners wherever a straight
+line is clear, then chooses the shortest route. Clicks inside the blocked footprint
+resolve to its nearest edge. New destinations replace the route immediately;
+movement carries unused frame distance through corners to keep speed consistent.
+This deliberately supports one static rectangular obstacle, rather than a general
+navigation framework. Room interactions use the same movement routing.
+
+Chest update validation: formatting, 14 unit tests, strict Clippy and the native
+macOS app build pass. Tests include routing in both directions, corner clearance,
+retargeting mid-walk, frame timing and an interaction reached via a detour.
+Visual checks of the chest, depth order and routes on macOS/Windows/Linux remain
+pending; earlier platform confirmations apply to earlier versions.

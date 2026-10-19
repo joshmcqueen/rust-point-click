@@ -3,6 +3,7 @@ use crate::world::Point;
 
 pub fn hotspot(p: Point) -> Option<&'static str> {
     match (p.x, p.y) {
+        (650.0..=850.0, 680.0..=855.0) => Some("wooden chest"),
         (780.0..=1140.0, 130.0..=640.0) => Some("archive gate"),
         (405.0..=475.0, 365.0..=515.0) => Some("torch"),
         (1250.0..=1450.0, 365.0..=490.0) => Some("inscription"),
@@ -13,6 +14,7 @@ pub fn hotspot(p: Point) -> Option<&'static str> {
 /// Each object has one intentional place for the explorer to stand.
 pub fn approach_point(object: &str) -> Point {
     match object {
+        "wooden chest" => Point::new(750.0, 900.0),
         "torch" => Point::new(480.0, 710.0),
         "inscription" => Point::new(1350.0, 710.0),
         _ => Point::new(960.0, 700.0),
@@ -81,6 +83,11 @@ pub struct Room {
 impl Room {
     pub fn act(&mut self, verb: &str, item: Option<&str>, object: &str) -> String {
         match (verb, item, object) {
+            ("Look at", _, "wooden chest") => {
+                "A heavy oak chest, banded with brass. Best walk around it.".into()
+            }
+            ("Open", _, "wooden chest") => "The lid is rusted shut.".into(),
+            ("Push" | "Pull" | "Pick up", _, "wooden chest") => "Far too heavy to move.".into(),
             ("Look at", _, "archive gate") => {
                 "A heavy iron gate. The lock bears a tiny sun.".into()
             }
@@ -175,5 +182,33 @@ mod walking_tests {
         assert!(!actor.moving());
         assert!(interaction.finish(&actor, &mut room).is_some());
         assert!(room.unlocked);
+    }
+}
+
+#[cfg(test)]
+mod obstacle_tests {
+    use super::*;
+    use crate::world::Character;
+
+    #[test]
+    fn chest_action_waits_until_routed_approach_is_reached() {
+        let mut actor = Character::new(Point::new(750.0, 680.0));
+        let mut interaction = Interaction::default();
+        let mut room = Room::default();
+        interaction.start(&mut actor, "Look at", None, "wooden chest");
+        for _ in 0..300 {
+            actor.update(1.0 / 60.0);
+            assert!(!crate::navigation::blocked(actor.position));
+            if actor.moving() {
+                assert!(interaction.finish(&actor, &mut room).is_none());
+            } else {
+                break;
+            }
+        }
+        assert_eq!(actor.position, approach_point("wooden chest"));
+        assert!(interaction
+            .finish(&actor, &mut room)
+            .unwrap()
+            .contains("oak chest"));
     }
 }

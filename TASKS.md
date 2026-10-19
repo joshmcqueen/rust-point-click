@@ -18,7 +18,7 @@
 - [x] User desktop check: resizing works on Windows and Linux (October 18, 2026).
 - [ ] Complete remaining Windows control checks and Linux checks beyond resizing.
 
-Scope: one room, unobstructed movement, procedural temporary art, verb panel, demonstration inventory and a key/gate interaction. No dialogue, collision/pathfinding, normal maps or dynamic occlusion shadows.
+Scope: one room, movement around one chest obstacle, procedural temporary art, verb panel, demonstration inventory and a key/gate interaction. No dialogue, general navigation framework, normal maps or dynamic occlusion shadows.
 
 ## Verb and inventory interface
 
@@ -41,3 +41,18 @@ Inventory starts with temporary demonstration items to exercise scrolling; colle
 - [ ] User runtime check: approach all three objects, replace/cancel actions mid-walk, and use the key then open the gate.
 
 - [x] Nine unit tests, formatting, strict Clippy and macOS app rebuild pass; user reviewed the walk-to-interact update and confirmed it looks good (October 18, 2026).
+
+
+## First obstacle: wooden chest
+
+- [x] Draw a temporary wooden chest with brass fittings in the room lighting pass.
+- [x] Route around its padded rectangular footprint using a small corner visibility graph.
+- [x] Clamp blocked destinations to a safe edge; replace routes on new clicks.
+- [x] Preserve movement speed through corners and exact stopping.
+- [x] Draw explorer behind/in front of chest based on floor depth.
+- [x] Add chest hotspot, approach point and examine/immovable responses.
+- [x] Formatting, 14 unit tests, strict Clippy and native macOS app rebuild pass.
+- [ ] User runtime check: walk both directions around chest, click behind/in front, redirect mid-walk, and examine chest; verify depth ordering and lighting.
+- [ ] Recheck updated obstacle behavior on Windows and Linux.
+
+- [x] User reviewed the chest obstacle update and confirmed it looks good on macOS (October 18, 2026). Detailed route/depth checks and other-platform checks remain pending.
