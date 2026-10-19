@@ -1,5 +1,5 @@
 //! Scene coordinates and walking are independent of drawing and window size.
-use crate::navigation;
+use crate::navigation::{self, Bounds};
 use std::collections::VecDeque;
 
 pub const SCENE_WIDTH: f32 = 1920.0;
@@ -60,9 +60,19 @@ impl Viewport {
     }
 }
 
+/// Convert the displayed room (the upper 810 scene pixels) to room coordinates.
+/// UI and letterbox pixels have no room position.
+pub fn room_pointer(view: Viewport, screen: Point) -> Option<Point> {
+    let scene = view.screen_to_scene(screen)?;
+    (scene.y < 810.0).then(|| Point::new(scene.x, scene.y / 0.75))
+}
+
 /// The character's position represents their feet on the floor.
-pub fn clamp_walk_target(point: Point) -> Point {
-    Point::new(point.x.clamp(130.0, 1790.0), point.y.clamp(650.0, 940.0))
+pub fn clamp_walk_target(point: Point, floor: Bounds) -> Point {
+    Point::new(
+        point.x.clamp(floor.left, floor.right),
+        point.y.clamp(floor.top, floor.bottom),
+    )
 }
 
 pub struct Character {
@@ -70,22 +80,35 @@ pub struct Character {
     pub target: Point,
     pub speed: f32,
     route: VecDeque<Point>,
+    floor: Bounds,
+    obstacle: Bounds,
 }
 
 impl Character {
-    pub fn new(position: Point) -> Self {
-        let position = navigation::safe_point(clamp_walk_target(position));
+    pub fn new(position: Point, floor: Bounds, obstacle: Bounds) -> Self {
+        let position = navigation::safe_point(clamp_walk_target(position, floor), obstacle);
         Self {
             position,
             target: position,
             speed: 360.0,
             route: VecDeque::new(),
+            floor,
+            obstacle,
         }
     }
 
+    /// Enter a room with fresh geometry and no remaining movement from the old room.
+    pub fn enter(&mut self, position: Point, floor: Bounds, obstacle: Bounds) {
+        self.floor = floor;
+        self.obstacle = obstacle;
+        self.position = navigation::safe_point(clamp_walk_target(position, floor), obstacle);
+        self.target = self.position;
+        self.route.clear();
+    }
+
     pub fn walk_to(&mut self, point: Point) {
-        self.target = navigation::safe_point(clamp_walk_target(point));
-        self.route = navigation::route(self.position, self.target).into();
+        self.target = navigation::safe_point(clamp_walk_target(point, self.floor), self.obstacle);
+        self.route = navigation::route(self.position, self.target, self.obstacle).into();
     }
 
     pub fn moving(&self) -> bool {
@@ -115,6 +138,18 @@ impl Character {
 #[cfg(test)]
 mod tests {
     use super::*;
+    const FLOOR: Bounds = Bounds {
+        left: 130.0,
+        right: 1790.0,
+        top: 650.0,
+        bottom: 940.0,
+    };
+    const CHEST: Bounds = Bounds {
+        left: 615.0,
+        right: 885.0,
+        top: 735.0,
+        bottom: 875.0,
+    };
 
     fn near(actual: f32, expected: f32) {
         assert!((actual - expected).abs() < 0.01, "{actual} != {expected}");
@@ -151,8 +186,8 @@ mod tests {
 
     #[test]
     fn walking_is_independent_of_update_frequency() {
-        let mut one_step = Character::new(Point::new(200.0, 700.0));
-        let mut many_steps = Character::new(one_step.position);
+        let mut one_step = Character::new(Point::new(200.0, 700.0), FLOOR, CHEST);
+        let mut many_steps = Character::new(one_step.position, FLOOR, CHEST);
         one_step.walk_to(Point::new(1500.0, 900.0));
         many_steps.walk_to(one_step.target);
         one_step.update(1.0);
@@ -165,7 +200,7 @@ mod tests {
 
     #[test]
     fn walking_stops_exactly_without_overshooting_and_clamps_floor() {
-        let mut character = Character::new(Point::new(200.0, 700.0));
+        let mut character = Character::new(Point::new(200.0, 700.0), FLOOR, CHEST);
         character.walk_to(Point::new(-10.0, 2000.0));
         assert_eq!(character.target, Point::new(130.0, 940.0));
         character.update(10.0);
@@ -179,17 +214,29 @@ mod tests {
 #[cfg(test)]
 mod obstacle_tests {
     use super::*;
+    const FLOOR: Bounds = Bounds {
+        left: 130.0,
+        right: 1790.0,
+        top: 650.0,
+        bottom: 940.0,
+    };
+    const CHEST: Bounds = Bounds {
+        left: 615.0,
+        right: 885.0,
+        top: 735.0,
+        bottom: 875.0,
+    };
 
     #[test]
     fn walking_and_retargeting_never_enter_chest() {
-        let mut actor = Character::new(Point::new(400.0, 810.0));
+        let mut actor = Character::new(Point::new(400.0, 810.0), FLOOR, CHEST);
         actor.walk_to(Point::new(1100.0, 810.0));
         for frame in 0..500 {
             if frame == 45 {
                 actor.walk_to(Point::new(750.0, 920.0));
             }
             actor.update(1.0 / 60.0);
-            assert!(!navigation::blocked(actor.position));
+            assert!(!navigation::blocked(actor.position, CHEST));
         }
         assert_eq!(actor.position, Point::new(750.0, 920.0));
         assert!(!actor.moving());
@@ -197,8 +244,8 @@ mod obstacle_tests {
 
     #[test]
     fn corner_travel_uses_whole_frame_budget() {
-        let mut once = Character::new(Point::new(400.0, 810.0));
-        let mut many = Character::new(once.position);
+        let mut once = Character::new(Point::new(400.0, 810.0), FLOOR, CHEST);
+        let mut many = Character::new(once.position, FLOOR, CHEST);
         once.walk_to(Point::new(1100.0, 810.0));
         many.walk_to(once.target);
         once.update(1.5);
@@ -209,5 +256,51 @@ mod obstacle_tests {
         assert!((once.position.y - many.position.y).abs() < 0.01);
         once.update(10.0);
         assert_eq!(once.position, once.target);
+    }
+    #[test]
+    fn entering_room_clears_old_route_and_uses_new_geometry() {
+        let mut actor = Character::new(Point::new(400.0, 810.0), FLOOR, CHEST);
+        actor.walk_to(Point::new(1100.0, 810.0));
+        actor.update(0.1);
+        let fountain = Bounds {
+            left: 810.0,
+            right: 1110.0,
+            top: 700.0,
+            bottom: 900.0,
+        };
+        actor.enter(Point::new(1700.0, 820.0), FLOOR, fountain);
+        assert!(!actor.moving());
+        actor.update(10.0);
+        assert_eq!(actor.position, Point::new(1700.0, 820.0));
+        actor.walk_to(Point::new(600.0, 820.0));
+        for _ in 0..600 {
+            actor.update(1.0 / 60.0);
+            assert!(!navigation::blocked(actor.position, fountain));
+        }
+        assert_eq!(actor.position, Point::new(600.0, 820.0));
+        actor.enter(Point::new(960.0, 800.0), FLOOR, fountain);
+        assert!(!navigation::blocked(actor.position, fountain));
+        assert_eq!(actor.position, actor.target);
+    }
+
+    #[test]
+    fn room_pointer_maps_room_and_rejects_ui_and_bars() {
+        for (width, height) in [(1280.0, 720.0), (2560.0, 1080.0), (1000.0, 1000.0)] {
+            let view = viewport(width, height);
+            let screen = |x, y| Point::new(view.x + x * view.scale, view.y + y * view.scale);
+            let mapped = room_pointer(view, screen(960.0, 600.0)).unwrap();
+            assert!((mapped.x - 960.0).abs() < 0.01);
+            assert!((mapped.y - 800.0).abs() < 0.01);
+            assert_eq!(room_pointer(view, screen(960.0, 810.0)), None);
+            assert_eq!(room_pointer(view, screen(960.0, 1000.0)), None);
+            assert_eq!(
+                room_pointer(view, Point::new(view.x - 1.0, view.y + 10.0)),
+                None
+            );
+            assert_eq!(
+                room_pointer(view, Point::new(view.x + 10.0, view.y - 1.0)),
+                None
+            );
+        }
     }
 }

@@ -18,7 +18,7 @@
 - [x] User desktop check: resizing works on Windows and Linux (October 18, 2026).
 - [ ] Complete remaining Windows control checks and Linux checks beyond resizing.
 
-Scope: one room, movement around one chest obstacle, procedural temporary art, verb panel, demonstration inventory and a key/gate interaction. No dialogue, general navigation framework, normal maps or dynamic occlusion shadows.
+Current scope: two connected rooms, chest/fountain obstacles, procedural temporary art, verb panel, inventory collection, and a complete garden-key/gate puzzle. No dialogue, save/load, general navigation framework, normal maps, or dynamic occlusion shadows.
 
 ## Verb and inventory interface
 
@@ -28,7 +28,7 @@ Scope: one room, movement around one chest obstacle, procedural temporary art, v
 - [x] Add a small brass-key/gate interaction and persistent open/closed state within the session.
 - [ ] User visual/play check: panel readability at 1280×720, inventory scrolling, hover sentences, and resized input mapping.
 
-Inventory starts with temporary demonstration items to exercise scrolling; collecting items and save/load are still future work.
+The earlier interface started with demonstration items. The garden milestone below adds collection and removes the starting key; save/load remains future work.
 - [x] Interface integration: formatting, six unit tests, strict Clippy, native build, and macOS app rebuild pass. User confirmed the corrected interface looks good on macOS (October 18, 2026); detailed interaction checks remain pending.
 - [x] Fix screen-overlay Y orientation after user screenshot showed inverted interface at the top. Screen camera now compensates for Macroquad's screen/render-target Y convention; six tests, formatting, Clippy and app rebuild pass. User confirmed the orientation fix works and the interface looks good (October 18, 2026).
 
@@ -56,3 +56,22 @@ Inventory starts with temporary demonstration items to exercise scrolling; colle
 - [ ] Recheck updated obstacle behavior on Windows and Linux.
 
 - [x] User reviewed the chest obstacle update and confirmed it looks good on macOS (October 18, 2026). Detailed route/depth checks and other-platform checks remain pending.
+
+
+## Garden and complete demo
+
+- [x] Separate typed identities/session state, shared interactions, and room content/artwork.
+- [x] Add sunny garden with animated fountain, stonework, greenery, and right passage.
+- [x] Add chamber left passage and directional exit cursor/label independent of selected verb/item.
+- [x] Walk to exits before switching; clear old routes/actions and enter safely inside the destination.
+- [x] Parameterize single-obstacle routing for chamber chest and garden fountain; preserve depth order.
+- [x] Push loose stone, reveal compartment, collect brass key once, persist state through room changes.
+- [x] Keep nine other starting props; key/icon selection uses item identity, not inventory index.
+- [x] Use key to unlock gate; Open gate completes demo with one-time dismissible message.
+- [x] Preserve per-room lighting, resizing/input mapping, and movable-light controls.
+- [x] 24 automated tests pass; formatting, strict Clippy, native build, and macOS app rebuild pass (October 18, 2026).
+- [x] Refresh README launch instructions, controls, puzzle walkthrough, architecture, and portability checks.
+- [x] macOS app launches outside the sandbox; screenshot confirms the new chamber passage and nine-prop starting inventory render (October 18, 2026).
+- [ ] Complete macOS visual playthrough: garden/daylight/fountain animation, both arrow cursors, pickup, gate completion/dismissal, depth order and resized inputs. UI automation could not reliably drive the passage and reported that the user changed the app; full visual behavior is not claimed.
+- [ ] Windows/Linux validation of the new rooms, arrows, puzzle, lighting, and obstacle behavior.
+- [x] User reviewed the garden/demo update and confirmed it looks good on macOS (October 18, 2026). Detailed playthrough and other-platform checks remain pending.
