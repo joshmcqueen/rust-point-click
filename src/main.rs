@@ -81,6 +81,8 @@ async fn main() {
         rooms::floor(game.room),
         rooms::obstacle(game.room),
     );
+    let mut jenn = scene::Jenn::new();
+    let backgrounds = rooms::Backgrounds::new();
     let mut completion_visible = false;
     let mut lantern = vec2(1260.0, 720.0);
     let mut inspect = false;
@@ -154,7 +156,16 @@ async fn main() {
                 lantern = vec2(p.x, p.y);
             }
         }
-        actor.update(get_frame_time());
+        let dt = get_frame_time();
+        let previous = actor.position;
+        actor.update(dt);
+        // Measure actual motion before room transitions can reposition the actor.
+        jenn.update(
+            dt,
+            actor.moving(),
+            actor.position.x - previous.x,
+            actor.position.y - previous.y,
+        );
         if let Some(outcome) = interaction.finish(&mut actor, &mut game) {
             match outcome {
                 Outcome::Feedback(response) => {
@@ -177,7 +188,7 @@ async fn main() {
             ..Camera2D::from_display_rect(Rect::new(0.0, 0.0, 1920.0, 1080.0))
         });
         clear_background(BLACK);
-        rooms::draw_background(game.room, &game, time);
+        backgrounds.draw(game.room, &game);
         if actor.moving() {
             draw_ellipse_lines(
                 actor.target.x,
@@ -190,19 +201,11 @@ async fn main() {
             );
         }
         if actor.position.y < rooms::obstacle_front(game.room) {
-            scene::draw_character(
-                vec2(actor.position.x, actor.position.y),
-                actor.moving(),
-                time,
-            );
-            rooms::draw_obstacle(game.room, time);
+            jenn.draw(vec2(actor.position.x, actor.position.y));
+            rooms::draw_obstacle(game.room);
         } else {
-            rooms::draw_obstacle(game.room, time);
-            scene::draw_character(
-                vec2(actor.position.x, actor.position.y),
-                actor.moving(),
-                time,
-            );
+            rooms::draw_obstacle(game.room);
+            jenn.draw(vec2(actor.position.x, actor.position.y));
         }
         rooms::draw_foreground(game.room, time);
         draw_circle(

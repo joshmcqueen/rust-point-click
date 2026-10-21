@@ -5,6 +5,7 @@ mod garden;
 use crate::model::{GameState, ObjectId, RoomId};
 use crate::navigation::Bounds;
 use crate::world::Point;
+use macroquad::prelude::*;
 
 pub fn floor(_room: RoomId) -> Bounds {
     Bounds {
@@ -24,10 +25,11 @@ pub fn obstacle(room: RoomId) -> Bounds {
             bottom: 875.0,
         },
         RoomId::Garden => Bounds {
-            left: 775.0,
-            right: 1145.0,
-            top: 710.0,
-            bottom: 875.0,
+            // An empty footprint leaves the painted fountain walkable for now.
+            left: 0.0,
+            right: 0.0,
+            top: 0.0,
+            bottom: 0.0,
         },
     }
 }
@@ -101,17 +103,50 @@ pub fn ambient(room: RoomId) -> (f32, f32, f32) {
     }
 }
 
-pub fn draw_background(room: RoomId, state: &GameState, time: f32) {
-    match room {
-        RoomId::Chamber => chamber::draw_background(state, time),
-        RoomId::Garden => garden::draw_background(state),
+/// Embedded artwork keeps native builds independent of their launch directory.
+pub struct Backgrounds {
+    castle: Texture2D,
+    garden: Texture2D,
+}
+
+impl Backgrounds {
+    pub fn new() -> Self {
+        let load = |bytes: &[u8]| {
+            let texture = Texture2D::from_file_with_format(bytes, Some(ImageFormat::Png));
+            texture.set_filter(FilterMode::Nearest);
+            texture
+        };
+        Self {
+            castle: load(include_bytes!("../assets/backgrounds/castle.png")),
+            garden: load(include_bytes!("../assets/backgrounds/garden.png")),
+        }
+    }
+
+    pub fn draw(&self, room: RoomId, state: &GameState) {
+        let texture = match room {
+            RoomId::Chamber => &self.castle,
+            RoomId::Garden => &self.garden,
+        };
+        draw_texture_ex(
+            texture,
+            0.0,
+            0.0,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(1920.0, 1080.0)),
+                ..Default::default()
+            },
+        );
+        match room {
+            RoomId::Chamber => chamber::draw_background(state),
+            RoomId::Garden => garden::draw_background(state, texture),
+        }
     }
 }
 
-pub fn draw_obstacle(room: RoomId, time: f32) {
-    match room {
-        RoomId::Chamber => chamber::draw_chest(),
-        RoomId::Garden => garden::draw_fountain(time),
+pub fn draw_obstacle(room: RoomId) {
+    if room == RoomId::Chamber {
+        chamber::draw_chest();
     }
 }
 
@@ -124,6 +159,25 @@ pub fn draw_foreground(room: RoomId, time: f32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn garden_walks_directly_across_the_painted_fountain() {
+        let start = Point::new(600.0, 800.0);
+        let destination = Point::new(1300.0, 800.0);
+        assert_eq!(
+            crate::navigation::route(start, destination, obstacle(RoomId::Garden)),
+            vec![destination]
+        );
+        let fountain = Point::new(960.0, 800.0);
+        assert!(!crate::navigation::blocked(
+            fountain,
+            obstacle(RoomId::Garden)
+        ));
+        assert_eq!(
+            crate::navigation::safe_point(fountain, obstacle(RoomId::Garden)),
+            fountain
+        );
+    }
 
     #[test]
     fn all_room_approaches_and_entries_are_reachable() {

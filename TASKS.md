@@ -18,7 +18,7 @@
 - [x] User desktop check: resizing works on Windows and Linux (October 18, 2026).
 - [ ] Complete remaining Windows control checks and Linux checks beyond resizing.
 
-Current scope: two connected rooms, chest/fountain obstacles, procedural temporary art, verb panel, inventory collection, and a complete garden-key/gate puzzle. No dialogue, save/load, general navigation framework, normal maps, or dynamic occlusion shadows.
+Current scope: two connected rooms, a chamber chest obstacle, embedded Castle/Garden backgrounds, an animated Jenn character sprite, verb panel, inventory collection, and a complete garden-key/gate puzzle. No dialogue, save/load, general navigation framework, normal maps, or dynamic occlusion shadows.
 
 ## Verb and inventory interface
 
@@ -75,3 +75,40 @@ The earlier interface started with demonstration items. The garden milestone bel
 - [ ] Complete macOS visual playthrough: garden/daylight/fountain animation, both arrow cursors, pickup, gate completion/dismissal, depth order and resized inputs. UI automation could not reliably drive the passage and reported that the user changed the app; full visual behavior is not claimed.
 - [ ] Windows/Linux validation of the new rooms, arrows, puzzle, lighting, and obstacle behavior.
 - [x] User reviewed the garden/demo update and confirmed it looks good on macOS (October 18, 2026). Detailed playthrough and other-platform checks remain pending.
+
+## Jenn sprite integration
+
+- [x] Replace temporary explorer artwork with the embedded `assets/jenn` PNG and Aseprite JSON Array export.
+- [x] Use `idle_right` and `walk_right` tags and exported frame durations; ignore untagged frames.
+- [x] Select walking from actual movement, mirror leftward movement, and retain horizontal facing while idle or moving vertically.
+- [x] Keep sprite drawing at feet-based movement/interaction positions in the existing room-lighting and obstacle-depth stages.
+- [x] Document re-export settings and include `assets` in source-copy build instructions.
+- [x] 27 automated tests, formatting, strict Clippy, native build/macOS app rebuild, and whitespace checks pass (October 19, 2026).
+- [x] Launch rebuilt macOS app and capture idle transparency/lighting, arrival idle at the gate approach, a rightward walking pose at a new position, a mirrored leftward walking pose, and stopped left-facing idle (October 19, 2026).
+- [ ] Detailed macOS visual review: stride/foot sliding, animation timing, ground alignment, displayed size, garden lighting, obstacle depth ordering, and resized sprite presentation.
+- [ ] Windows/Linux runtime validation of the sprite integration.
+
+## Front-facing movement
+
+- [x] Embed renamed side/front sheets and validate each sheet's own tags.
+- [x] Use front walking for predominantly downward motion; retain front idle on arrival. Use side sprites for other movement until back artwork is available.
+- [x] Preserve the user-selected scale of 2.0 and shared feet origin.
+- [x] 28 tests, strict Clippy, formatting, native build/macOS app rebuild, and whitespace checks pass (October 19, 2026).
+- [x] macOS runtime screenshots confirm front walking toward the camera and front idle after arrival (October 19, 2026).
+- [ ] Windows/Linux runtime check of front movement; detailed stride and alignment review.
+
+- [x] Double front-walk animation playback speed; keep movement speed, side playback, and idle timing unchanged.
+
+## Painted background integration
+
+- [x] Embed `assets/backgrounds/castle.png` and `assets/backgrounds/garden.png`, using nearest-neighbor filtering and stretching to the existing room canvas.
+- [x] Restore the Castle torch and inscription sign with Macroquad drawing; retain the chest and existing interactions.
+- [x] Use the painted Garden fountain as static scenery with no collision or character occlusion; remove the procedural fountain and droplets.
+- [x] Retain the marked-stone/key puzzle using a compartment/key overlay and a cropped displaced stone.
+- [x] Update current architecture and source-copy instructions for the background assets.
+- [x] 29 automated tests, formatting, strict Clippy, native build/macOS app rebuild, and whitespace checks pass (October 20, 2026).
+- [x] macOS screenshots confirm both backgrounds, restored torch/sign, passage transition, and marked stone reveal. User tested the update and confirmed it looks good (October 20, 2026).
+- [ ] Detailed runtime checks: chest depth, walking over the fountain, key collection, gate completion, and resized input mapping; the user did not enumerate individual checks.
+- [ ] Windows/Linux runtime validation of the new backgrounds and puzzle overlays.
+
+The garden milestone above records the earlier procedural fountain implementation. The current background version deliberately allows walking over the painted fountain. Separating it into an animated transparent sprite with depth occlusion is future work.
